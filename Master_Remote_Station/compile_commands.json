@@ -1,0 +1,37 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/arm-none-eabi-gcc",
+      "-c",
+      "-mcpu=cortex-m7",
+      "-mthumb",
+      "-mfpu=fpv5-d16",
+      "-mfloat-abi=hard",
+      "-DUSE_HAL_DRIVER",
+      "-DSTM32H755xx",
+      "-DCORE_CM7",
+      "-ICM7/Core/Inc",
+      "-IDrivers/STM32H7xx_HAL_Driver/Inc",
+      "-IDrivers/STM32H7xx_HAL_Driver/Inc/Legacy",
+      "-IDrivers/CMSIS/Device/ST/STM32H7xx/Include",
+      "-IDrivers/CMSIS/Include",
+      "-IDrivers/BSP/STM32H7xx_Nucleo",
+      "-IDrivers/lvgl",
+      "-IDrivers/lv_conf.h",
+      "-isystem",
+      "/usr/arm-none-eabi/include",
+      "-Og",
+      "-Wall",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-g",
+      "-gdwarf-2",
+      "-o",
+      "build/main.o",
+      "CM7/Core/Src/main.c"
+    ],
+    "directory": "/home/george/Code/Embedded/STM32/Music_Player",
+    "file": "/home/george/Code/Embedded/STM32/Music_Player/CM7/Core/Src/main.c"
+  }
+]
+

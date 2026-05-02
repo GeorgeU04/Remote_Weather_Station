@@ -1,0 +1,32 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/arm-none-eabi-gcc",
+      "-c",
+      "-mcpu=cortex-m4",
+      "-mthumb",
+      "-mfloat-abi=soft",
+      "-DUSE_HAL_DRIVER",
+      "-DSTM32WL55xx",
+      "-ICore/Inc",
+      "-IDrivers/STM32WLxx_HAL_Driver/Inc",
+      "-IDrivers/STM32WLxx_HAL_Driver/Inc/Legacy",
+      "-IDrivers/BSP/STM32WLxx_Nucleo",
+      "-IDrivers/CMSIS/Device/ST/STM32WLxx/Include",
+      "-IDrivers/CMSIS/Include",
+      "-isystem",
+      "/usr/arm-none-eabi/include",
+      "-Og",
+      "-Wall",
+      "-fdata-sections",
+      "-ffunction-sections",
+      "-g",
+      "-gdwarf-2",
+      "-o",
+      "build/main.o",
+      "Core/Src/main.c"
+    ],
+    "directory": "/home/george/Code/Embedded/STM32/Remote_Weather_Station/Servant_Remote_Station",
+    "file": "/home/george/Code/Embedded/STM32/Remote_Weather_Station/Servant_Remote_Station/Core/Src/main.c"
+  }
+]
