@@ -191,7 +191,8 @@ $(BUILD_DIR)/%.bin: $(BUILD_DIR)/%.elf | $(BUILD_DIR)
 	
 $(BUILD_DIR):
 	mkdir $@		
-
+flash:
+	STM32_Programmer_CLI -c port=SWD mode=UR -d build/Master_Remote_Station.bin 0x08000000 -hardRst
 #######################################
 # clean up
 #######################################

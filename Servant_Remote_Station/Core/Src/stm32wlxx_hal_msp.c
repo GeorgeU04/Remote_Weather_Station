@@ -94,11 +94,10 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**SPI1 GPIO Configuration
     PA12     ------> SPI1_MOSI
-    PA15     ------> SPI1_NSS
     PA11     ------> SPI1_MISO
     PB3     ------> SPI1_SCK
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_15|GPIO_PIN_11;
+    GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_11;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -138,11 +137,10 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 
     /**SPI1 GPIO Configuration
     PA12     ------> SPI1_MOSI
-    PA15     ------> SPI1_NSS
     PA11     ------> SPI1_MISO
     PB3     ------> SPI1_SCK
     */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12|GPIO_PIN_15|GPIO_PIN_11);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12|GPIO_PIN_11);
 
     HAL_GPIO_DeInit(GPIOB, GPIO_PIN_3);
 
@@ -150,6 +148,50 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* hspi)
 
     /* USER CODE END SPI1_MspDeInit 1 */
   }
+
+}
+
+/**
+  * @brief SUBGHZ MSP Initialization
+  * This function configures the hardware resources used in this example
+  * @param hsubghz: SUBGHZ handle pointer
+  * @retval None
+  */
+void HAL_SUBGHZ_MspInit(SUBGHZ_HandleTypeDef* hsubghz)
+{
+    /* USER CODE BEGIN SUBGHZ_MspInit 0 */
+
+    /* USER CODE END SUBGHZ_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_SUBGHZSPI_CLK_ENABLE();
+    /* SUBGHZ interrupt Init */
+    HAL_NVIC_SetPriority(SUBGHZ_Radio_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(SUBGHZ_Radio_IRQn);
+    /* USER CODE BEGIN SUBGHZ_MspInit 1 */
+
+    /* USER CODE END SUBGHZ_MspInit 1 */
+
+}
+
+/**
+  * @brief SUBGHZ MSP De-Initialization
+  * This function freeze the hardware resources used in this example
+  * @param hsubghz: SUBGHZ handle pointer
+  * @retval None
+  */
+void HAL_SUBGHZ_MspDeInit(SUBGHZ_HandleTypeDef* hsubghz)
+{
+    /* USER CODE BEGIN SUBGHZ_MspDeInit 0 */
+
+    /* USER CODE END SUBGHZ_MspDeInit 0 */
+    /* Peripheral clock disable */
+    __HAL_RCC_SUBGHZSPI_CLK_DISABLE();
+
+    /* SUBGHZ interrupt DeInit */
+    HAL_NVIC_DisableIRQ(SUBGHZ_Radio_IRQn);
+    /* USER CODE BEGIN SUBGHZ_MspDeInit 1 */
+
+    /* USER CODE END SUBGHZ_MspDeInit 1 */
 
 }
 
