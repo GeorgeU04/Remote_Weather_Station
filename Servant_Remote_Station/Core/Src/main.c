@@ -18,10 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "../../SubGHz_Phy/App/app_subghz_phy.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "BME280.h"
+#include "stm32wlxx_hal_subghz.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,6 +46,8 @@
 COM_InitTypeDef BspCOMInit;
 SPI_HandleTypeDef hspi1;
 
+SUBGHZ_HandleTypeDef hsubghz;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -58,7 +62,7 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+struct BME280 sensor = {0};
 /* USER CODE END 0 */
 
 /**
@@ -68,7 +72,7 @@ static void MX_SPI1_Init(void);
 int main(void) {
 
   /* USER CODE BEGIN 1 */
-
+  struct weatherData data = {0};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -91,8 +95,10 @@ int main(void) {
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_SPI1_Init();
+  MX_SubGHz_Phy_Init();
   /* USER CODE BEGIN 2 */
 
+  initBME280(&sensor, &hspi1, SPI1_CS_GPIO_Port, SPI1_CS_Pin);
   /* USER CODE END 2 */
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time
@@ -115,8 +121,13 @@ int main(void) {
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1) {
-
+    readWeatherData(&sensor, &data);
+    printf("Humidity: %lu %%RH\r\n", data.humidty / 1024);
+    printf("Temperature: %ld C\r\n", data.temperature / 100);
+    printf("Pressure: %lu Pa\r\n", data.pressure / 256);
+    HAL_Delay(1000);
     /* USER CODE END WHILE */
+    MX_SubGHz_Phy_Process();
 
     /* USER CODE BEGIN 3 */
   }
@@ -180,10 +191,10 @@ static void MX_SPI1_Init(void) {
   hspi1.Instance = SPI1;
   hspi1.Init.Mode = SPI_MODE_MASTER;
   hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
@@ -197,6 +208,29 @@ static void MX_SPI1_Init(void) {
   /* USER CODE BEGIN SPI1_Init 2 */
 
   /* USER CODE END SPI1_Init 2 */
+}
+
+/**
+ * @brief SUBGHZ Initialization Function
+ * @param None
+ * @retval None
+ */
+void MX_SUBGHZ_Init(void) {
+
+  /* USER CODE BEGIN SUBGHZ_Init 0 */
+
+  /* USER CODE END SUBGHZ_Init 0 */
+
+  /* USER CODE BEGIN SUBGHZ_Init 1 */
+
+  /* USER CODE END SUBGHZ_Init 1 */
+  hsubghz.Init.BaudratePrescaler = SUBGHZSPI_BAUDRATEPRESCALER_8;
+  if (HAL_SUBGHZ_Init(&hsubghz) != HAL_OK) {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SUBGHZ_Init 2 */
+
+  /* USER CODE END SUBGHZ_Init 2 */
 }
 
 /**
@@ -216,8 +250,18 @@ static void MX_GPIO_Init(void) {
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, FE_CTRL3_Pin | FE_CTRL2_Pin | FE_CTRL1_Pin,
                     GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : SPI1_CS_Pin */
+  GPIO_InitStruct.Pin = SPI1_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(SPI1_CS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : FE_CTRL3_Pin FE_CTRL2_Pin FE_CTRL1_Pin */
   GPIO_InitStruct.Pin = FE_CTRL3_Pin | FE_CTRL2_Pin | FE_CTRL1_Pin;
