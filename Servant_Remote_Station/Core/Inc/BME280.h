@@ -19,7 +19,7 @@ struct rawWeatherData {
 struct weatherData {
   int32_t temperature;
   uint32_t pressure;
-  uint32_t humidty;
+  uint32_t humidity;
 };
 
 void initBME280(struct BME280 *sensor, SPI_HandleTypeDef *SPIHandler,

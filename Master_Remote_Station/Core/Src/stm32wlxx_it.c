@@ -55,7 +55,8 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern SUBGHZ_HandleTypeDef hsubghz;
+extern RTC_HandleTypeDef hrtc;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -238,6 +239,48 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
   /* USER CODE END EXTI9_5_IRQn 1 */
+}
+
+/**
+  * @brief This function handles SUBGHZ Radio Interrupt.
+  */
+void SUBGHZ_Radio_IRQHandler(void)
+{
+  /* USER CODE BEGIN SUBGHZ_Radio_IRQn 0 */
+
+  /* USER CODE END SUBGHZ_Radio_IRQn 0 */
+  HAL_SUBGHZ_IRQHandler(&hsubghz);
+  /* USER CODE BEGIN SUBGHZ_Radio_IRQn 1 */
+
+  /* USER CODE END SUBGHZ_Radio_IRQn 1 */
+}
+
+/**
+ * @brief This function handles RTC Tamper, RTC TimeStamp, LSECSS and RTC SSRU Interrupts.
+ */
+void TAMP_STAMP_LSECSS_SSRU_IRQHandler(void)
+{
+  /* USER CODE BEGIN TAMP_STAMP_LSECSS_SSRU_IRQn 0 */
+
+  /* USER CODE END TAMP_STAMP_LSECSS_SSRU_IRQn 0 */
+  HAL_RTCEx_SSRUIRQHandler(&hrtc);
+  /* USER CODE BEGIN TAMP_STAMP_LSECSS_SSRU_IRQn 1 */
+
+  /* USER CODE END TAMP_STAMP_LSECSS_SSRU_IRQn 1 */
+}
+
+/**
+ * @brief This function handles RTC Alarms (A and B) Interrupt.
+ */
+void RTC_Alarm_IRQHandler(void)
+{
+  /* USER CODE BEGIN RTC_Alarm_IRQn 0 */
+
+  /* USER CODE END RTC_Alarm_IRQn 0 */
+  HAL_RTC_AlarmIRQHandler(&hrtc);
+  /* USER CODE BEGIN RTC_Alarm_IRQn 1 */
+
+  /* USER CODE END RTC_Alarm_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

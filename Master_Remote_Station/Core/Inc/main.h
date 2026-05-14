@@ -54,12 +54,19 @@ extern "C" {
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
+void MX_SUBGHZ_Init(void);
+void MX_RTC_Init(void);
 
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+/* RTC binary prescalers (SubGHz_Phy_PingPong / STM32CubeWL for TIMER_IF) */
+#define RTC_N_PREDIV_S 10U
+#define RTC_PREDIV_S ((1U << RTC_N_PREDIV_S) - 1U)
+#define RTC_PREDIV_A ((1U << (15U - RTC_N_PREDIV_S)) - 1U)
+
 #define RCC_OSC32_IN_Pin GPIO_PIN_14
 #define RCC_OSC32_IN_GPIO_Port GPIOC
 #define RCC_OSC32_OUT_Pin GPIO_PIN_15

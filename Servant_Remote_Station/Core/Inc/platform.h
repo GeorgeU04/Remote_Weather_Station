@@ -29,7 +29,8 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 
 /* USER CODE BEGIN EC */
-
+/* Use Nucleo BSP for RF switch / TCXO (same as SubGHz_Phy_PingPong). */
+#define USE_BSP_DRIVER
 /* USER CODE END EC */
 
 /* Includes ------------------------------------------------------------------*/
