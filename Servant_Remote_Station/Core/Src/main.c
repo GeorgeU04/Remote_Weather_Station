@@ -18,12 +18,15 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "../../SubGHz_Phy/App/app_subghz_phy.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "../../SubGHz_Phy/App/app_subghz_phy.h"
+#include "../../SubGHz_Phy/App/subghz_phy_app.h"
 #include "BME280.h"
-#include "stm32wlxx_hal_subghz.h"
+#include "stm32wlxx_hal.h"
+#include <stdint.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,6 +47,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 COM_InitTypeDef BspCOMInit;
+RTC_HandleTypeDef hrtc;
+
 SPI_HandleTypeDef hspi1;
 
 SUBGHZ_HandleTypeDef hsubghz;
@@ -63,6 +68,7 @@ static void MX_SPI1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 struct BME280 sensor = {0};
+const uint8_t NODE_ID = 1;
 /* USER CODE END 0 */
 
 /**
@@ -97,8 +103,6 @@ int main(void) {
   MX_SPI1_Init();
   MX_SubGHz_Phy_Init();
   /* USER CODE BEGIN 2 */
-
-  initBME280(&sensor, &hspi1, SPI1_CS_GPIO_Port, SPI1_CS_Pin);
   /* USER CODE END 2 */
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time
@@ -120,14 +124,17 @@ int main(void) {
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  initBME280(&sensor, &hspi1, SPI1_CS_GPIO_Port, SPI1_CS_Pin);
+  uint32_t lastSend = 0;
   while (1) {
-    readWeatherData(&sensor, &data);
-    printf("Humidity: %lu %%RH\r\n", data.humidty / 1024);
-    printf("Temperature: %ld C\r\n", data.temperature / 100);
-    printf("Pressure: %lu Pa\r\n", data.pressure / 256);
-    HAL_Delay(1000);
-    /* USER CODE END WHILE */
     MX_SubGHz_Phy_Process();
+    if (HAL_GetTick() - lastSend >= 5000U) {
+      lastSend = HAL_GetTick();
+      readWeatherData(&sensor, &data);
+      sendWeatherData(&data, NODE_ID);
+      printf("TX: sendWeatherData returned\r\n");
+    }
+    /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
@@ -142,16 +149,25 @@ void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
+  /** Configure LSE Drive Capability
+   */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Configure the main internal regulator output voltage
    */
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE2);
 
   /** Initializes the CPU, AHB and APB buses clocks
    */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.OscillatorType =
+      RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE | RCC_OSCILLATORTYPE_MSI;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.MSIState = RCC_MSI_ON;
   RCC_OscInitStruct.MSICalibrationValue = RCC_MSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.MSIClockRange = RCC_MSIRANGE_6;
+  RCC_OscInitStruct.LSIDiv = RCC_LSI_DIV1;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
@@ -171,6 +187,55 @@ void SystemClock_Config(void) {
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
     Error_Handler();
   }
+}
+
+/**
+ * @brief RTC Initialization Function
+ * @note  Matches STM32CubeWL SubGHz_Phy_PingPong (binary RTC + alarm for
+ * UTIL_TIMER).
+ * @param None
+ * @retval None
+ */
+void MX_RTC_Init(void) {
+  /* USER CODE BEGIN RTC_Init 0 */
+
+  /* USER CODE END RTC_Init 0 */
+
+  RTC_AlarmTypeDef sAlarm = {0};
+
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+
+  /** Initialize RTC Only
+   */
+  hrtc.Instance = RTC;
+  hrtc.Init.AsynchPrediv = RTC_PREDIV_A;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutRemap = RTC_OUTPUT_REMAP_NONE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  hrtc.Init.OutPutPullUp = RTC_OUTPUT_PULLUP_NONE;
+  hrtc.Init.BinMode = RTC_BINARY_ONLY;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK) {
+    Error_Handler();
+  }
+
+  if (HAL_RTCEx_SetSSRU_IT(&hrtc) != HAL_OK) {
+    Error_Handler();
+  }
+
+  sAlarm.BinaryAutoClr = RTC_ALARMSUBSECONDBIN_AUTOCLR_NO;
+  sAlarm.AlarmTime.SubSeconds = 0x0U;
+  sAlarm.AlarmMask = RTC_ALARMMASK_NONE;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDBINMASK_NONE;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK) {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+
+  /* USER CODE END RTC_Init 2 */
 }
 
 /**
@@ -224,7 +289,7 @@ void MX_SUBGHZ_Init(void) {
   /* USER CODE BEGIN SUBGHZ_Init 1 */
 
   /* USER CODE END SUBGHZ_Init 1 */
-  hsubghz.Init.BaudratePrescaler = SUBGHZSPI_BAUDRATEPRESCALER_8;
+  hsubghz.Init.BaudratePrescaler = SUBGHZSPI_BAUDRATEPRESCALER_4;
   if (HAL_SUBGHZ_Init(&hsubghz) != HAL_OK) {
     Error_Handler();
   }

@@ -159,5 +159,5 @@ void readWeatherData(const struct BME280 *sensor, struct weatherData *data) {
         4));
   v_x1_u32r = (v_x1_u32r < 0 ? 0 : v_x1_u32r);
   v_x1_u32r = (v_x1_u32r > 419430400 ? 419430400 : v_x1_u32r);
-  data->humidty = (uint32_t)(v_x1_u32r >> 12);
+  data->humidity = (uint32_t)(v_x1_u32r >> 12);
 }
