@@ -51,7 +51,6 @@ SUBGHZ_HandleTypeDef hsubghz;
 
 /* USER CODE BEGIN PV */
 volatile bool RXReady;
-// volatile uint8_t receiveBuffer[sizeof(struct packet)];
 struct packet receivePacket = {0};
 struct weatherData receiveWeatherData = {0};
 /* USER CODE END PV */
@@ -128,9 +127,9 @@ int main(void) {
       RXReady = false;
       printf("Node ID: %d\r\n", receivePacket.nodeID);
       printf("Seq Num: %d\r\n", receivePacket.seqNum);
-      printf("Temperature: %ld\r\n", receivePacket.temperature / 100);
-      printf("Humidity: %lu\r\n", receivePacket.humidity / 1025);
-      printf("Pressure: %lu\r\n", receivePacket.pressure / 256);
+      printf("Temperature: %ld\r\n", receivePacket.temperature);
+      printf("Humidity: %lu\r\n", receivePacket.humidity);
+      printf("Pressure: %lu\r\n", receivePacket.pressure);
     }
 
     /* USER CODE BEGIN 3 */
