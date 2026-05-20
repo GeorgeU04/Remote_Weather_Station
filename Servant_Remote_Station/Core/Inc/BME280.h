@@ -13,7 +13,7 @@ struct BME280 {
 struct rawWeatherData {
   uint32_t rawTemperature;
   uint32_t rawPressure;
-  uint16_t rawHumidty;
+  uint16_t rawHumidity;
 };
 
 struct weatherData {

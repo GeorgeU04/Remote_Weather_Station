@@ -69,6 +69,7 @@ static void MX_SPI1_Init(void);
 /* USER CODE BEGIN 0 */
 struct BME280 sensor = {0};
 const uint8_t NODE_ID = 1;
+const uint32_t timeBetweenSendsMS = 5000U;
 /* USER CODE END 0 */
 
 /**
@@ -128,11 +129,16 @@ int main(void) {
   uint32_t lastSend = 0;
   while (1) {
     MX_SubGHz_Phy_Process();
-    if (HAL_GetTick() - lastSend >= 5000U) {
+    if (HAL_GetTick() - lastSend >= timeBetweenSendsMS) {
       lastSend = HAL_GetTick();
-      readWeatherData(&sensor, &data);
-      sendWeatherData(&data, NODE_ID);
-      printf("TX: sendWeatherData returned\r\n");
+      if (!packetACKED) {
+        sendWeatherData(&data, NODE_ID);
+        printf("TX: sendWeatherData returned from no ACK\r\n");
+      } else {
+        readWeatherData(&sensor, &data);
+        sendWeatherData(&data, NODE_ID);
+        printf("TX: sendWeatherData returned\r\n");
+      }
     }
     /* USER CODE END WHILE */
 

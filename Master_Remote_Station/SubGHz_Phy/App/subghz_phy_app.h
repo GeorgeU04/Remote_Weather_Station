@@ -34,7 +34,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-struct __attribute__((packed)) packet {
+struct __attribute__((packed)) dataPacket {
   int32_t temperature;
   uint32_t pressure;
   uint32_t humidity;
@@ -42,10 +42,9 @@ struct __attribute__((packed)) packet {
   uint8_t nodeID;
 };
 
-struct weatherData {
-  int32_t temperature;
-  uint32_t pressure;
-  uint32_t humidty;
+struct __attribute__((packed)) ackPacket {
+  uint16_t seqNum;
+  uint8_t nodeID;
 };
 /* USER CODE END ET */
 
@@ -57,9 +56,8 @@ struct weatherData {
 
 /* External variables --------------------------------------------------------*/
 /* USER CODE BEGIN EV */
-// extern volatile uint8_t receiveBuffer[sizeof(struct packet)];
-extern struct packet receivePacket;
-extern volatile bool RXReady;
+extern struct dataPacket rxPacket;
+extern volatile bool rxReady;
 /* USER CODE END EV */
 
 /* Exported macros -----------------------------------------------------------*/
@@ -71,9 +69,10 @@ extern volatile bool RXReady;
 #define LORA_CODINGRATE 1 // 4/5
 #define LORA_PREAMBLE_LENGTH 8
 #define LORA_SYMBOL_TIMEOUT 5
-#define LORA_FIX_LENGTH_PAYLOAD_ON true
+#define LORA_FIX_LENGTH_PAYLOAD_ON false
 #define LORA_IQ_INVERSION_ON false
-#define SENSOR_PACKET_SIZE 15
+#define TX_BUFFER_SIZE 256
+
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
