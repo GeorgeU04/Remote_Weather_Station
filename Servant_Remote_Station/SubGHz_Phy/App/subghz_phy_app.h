@@ -29,24 +29,32 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "BME280.h"
+#include <stdbool.h>
 #include <stdint.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-struct __attribute__((packed)) packet {
+
+struct __attribute__((packed)) dataPacket {
   int32_t temperature;
   uint32_t pressure;
   uint32_t humidity;
   uint16_t seqNum;
   uint8_t nodeID;
 };
+
+struct __attribute__((packed)) ackPacket {
+  uint16_t seqNum;
+  uint8_t nodeID;
+};
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 
 /* USER CODE BEGIN EC */
-
+extern bool packetACKED;
 /* USER CODE END EC */
 
 /* External variables --------------------------------------------------------*/
@@ -63,15 +71,15 @@ struct __attribute__((packed)) packet {
 #define LORA_CODINGRATE 1 // 4/5
 #define LORA_PREAMBLE_LENGTH 8
 #define LORA_SYMBOL_TIMEOUT 5
-#define LORA_FIX_LENGTH_PAYLOAD_ON true
+#define LORA_FIX_LENGTH_PAYLOAD_ON false
 #define LORA_IQ_INVERSION_ON false
 #define TX_BUFFER_SIZE 256
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 /**
-  * @brief  Init Subghz Application
-  */
+ * @brief  Init Subghz Application
+ */
 void SubghzApp_Init(void);
 
 /* USER CODE BEGIN EFP */

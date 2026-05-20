@@ -16,7 +16,7 @@ const server = app.listen(PORT, () => {
 const wss = new WebSocketServer({ server });
 
 const serial = new SerialPort({
-  path: "/dev/ttyACM0",
+  path: "/dev/ttyACM1",
   baudRate: 115200,
 });
 

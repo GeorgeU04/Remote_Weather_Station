@@ -50,9 +50,8 @@ RTC_HandleTypeDef hrtc;
 SUBGHZ_HandleTypeDef hsubghz;
 
 /* USER CODE BEGIN PV */
-volatile bool RXReady;
-struct packet receivePacket = {0};
-struct weatherData receiveWeatherData = {0};
+volatile bool rxReady;
+struct dataPacket rxPacket = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -123,13 +122,13 @@ int main(void) {
 
     /* USER CODE END WHILE */
     MX_SubGHz_Phy_Process();
-    if (RXReady) {
-      RXReady = false;
-      printf("Node ID: %d\r\n", receivePacket.nodeID);
-      printf("Seq Num: %d\r\n", receivePacket.seqNum);
-      printf("Temperature: %ld\r\n", receivePacket.temperature);
-      printf("Humidity: %lu\r\n", receivePacket.humidity);
-      printf("Pressure: %lu\r\n", receivePacket.pressure);
+    if (rxReady) {
+      rxReady = false;
+      printf("Node ID: %d\r\n", rxPacket.nodeID);
+      printf("Seq Num: %d\r\n", rxPacket.seqNum);
+      printf("Temperature: %ld\r\n", rxPacket.temperature);
+      printf("Humidity: %lu\r\n", rxPacket.humidity);
+      printf("Pressure: %lu\r\n", rxPacket.pressure);
     }
 
     /* USER CODE BEGIN 3 */

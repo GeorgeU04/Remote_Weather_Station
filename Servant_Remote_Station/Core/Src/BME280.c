@@ -52,7 +52,7 @@ void readRawWeatherData(const struct BME280 *sensor,
   uint8_t rawData[8] = {0};
   address = 0xF7;
   readRegister(sensor, 8, rawData, &address);
-  rawWeatherData->rawHumidty =
+  rawWeatherData->rawHumidity =
       ((uint16_t)rawData[6] << 8) | ((uint16_t)rawData[7]);
   rawWeatherData->rawTemperature = ((uint32_t)rawData[3] << 12) |
                                    ((uint32_t)rawData[4] << 4) |
@@ -142,7 +142,7 @@ void readWeatherData(const struct BME280 *sensor, struct weatherData *data) {
   int32_t v_x1_u32r;
   v_x1_u32r = (t_fine - ((int32_t)76800));
   v_x1_u32r =
-      (((((rawData.rawHumidty << 14) - (((int32_t)dig_H4) << 20) -
+      (((((rawData.rawHumidity << 14) - (((int32_t)dig_H4) << 20) -
           (((int32_t)dig_H5) * v_x1_u32r)) +
          ((int32_t)16384)) >>
         15) *

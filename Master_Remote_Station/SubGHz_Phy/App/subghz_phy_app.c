@@ -25,6 +25,8 @@
 #include "sys_app.h"
 
 /* USER CODE BEGIN Includes */
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 /* USER CODE END Includes */
 
@@ -54,7 +56,8 @@
 static RadioEvents_t RadioEvents;
 
 /* USER CODE BEGIN PV */
-
+static volatile bool txDone = true;
+static struct ackPacket txAckPacket;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,12 +120,19 @@ void SubghzApp_Init(void) {
                     LORA_CODINGRATE,       // coding rate
                     0,                     // bandwidth AFC, unused for LoRa
                     LORA_PREAMBLE_LENGTH, LORA_SYMBOL_TIMEOUT,
-                    LORA_FIX_LENGTH_PAYLOAD_ON, SENSOR_PACKET_SIZE,
+                    LORA_FIX_LENGTH_PAYLOAD_ON, 0,
                     true, // CRC on
                     0,    // freq hop off
                     0,    // hop period
                     LORA_IQ_INVERSION_ON,
                     true // continuous RX
+  );
+  Radio.SetTxConfig(MODEM_LORA, TX_OUTPUT_POWER, 0, LORA_BANDWIDTH,
+                    LORA_SPREADING_FACTOR, LORA_CODINGRATE,
+                    LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
+                    true, // CRC on
+                    0, 0, LORA_IQ_INVERSION_ON,
+                    300 // timeout ms
   );
   Radio.Rx(0);
   /* USER CODE END SubghzApp_Init_2 */
@@ -135,28 +145,36 @@ void SubghzApp_Init(void) {
 /* Private functions ---------------------------------------------------------*/
 static void OnTxDone(void) {
   /* USER CODE BEGIN OnTxDone */
-
+  txDone = true;
+  Radio.Rx(0);
   /* USER CODE END OnTxDone */
 }
 
 static void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi,
                      int8_t LoraSnr_FskCfo) {
   /* USER CODE BEGIN OnRxDone */
-  printf("RX done: %u bytes, RSSI=%d, SNR=%d\r\n", size, rssi, LoraSnr_FskCfo);
-  if (size != sizeof(struct packet)) {
-    printf("Bad packet size\r\n");
+  // printf("RX done: %u bytes, RSSI=%d, SNR=%d\r\n", size, rssi,
+  // LoraSnr_FskCfo);
+  if (size != sizeof(struct dataPacket)) {
+    // printf("RX %u bytes (expected ACK %u), RSSI=%d\r\n", size,
+    //       (unsigned)sizeof(struct dataPacket), rssi);
     Radio.Rx(0);
     return;
   }
-  RXReady = true;
-  memcpy(&receivePacket, payload, sizeof(receivePacket));
-  Radio.Rx(0);
-
+  memcpy(&rxPacket, payload, sizeof(struct dataPacket));
+  rxReady = true;
+  txAckPacket.nodeID = rxPacket.nodeID;
+  txAckPacket.seqNum = rxPacket.seqNum;
+  // printf("Sending ACK seq=%u, nodeID=%u\r\n", txAckPacket.seqNum,
+  // txAckPacket.nodeID);
+  Radio.Send((uint8_t *)&txAckPacket, sizeof(txAckPacket));
   /* USER CODE END OnRxDone */
 }
 
 static void OnTxTimeout(void) {
   /* USER CODE BEGIN OnTxTimeout */
+  txDone = true;
+  Radio.Rx(0);
   /* USER CODE END OnTxTimeout */
 }
 

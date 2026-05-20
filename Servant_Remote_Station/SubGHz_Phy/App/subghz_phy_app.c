@@ -25,6 +25,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "../../Middlewares/Third_Party/SubGHz_Phy/radio_driver/radio.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* External variables
@@ -54,6 +55,7 @@ static RadioEvents_t RadioEvents;
 
 /* USER CODE BEGIN PV */
 static volatile bool txDone = true;
+bool packetACKED = true;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -117,6 +119,21 @@ void SubghzApp_Init(void) {
                     0, 0, LORA_IQ_INVERSION_ON,
                     300 // timeout ms
   );
+  Radio.SetRxConfig(MODEM_LORA,
+                    LORA_BANDWIDTH,        // bandwidth
+                    LORA_SPREADING_FACTOR, // datarate / spreading factor
+                    LORA_CODINGRATE,       // coding rate
+                    0,                     // bandwidth AFC, unused for LoRa
+                    LORA_PREAMBLE_LENGTH, LORA_SYMBOL_TIMEOUT,
+                    LORA_FIX_LENGTH_PAYLOAD_ON, 0,
+                    true, // CRC on
+                    0,    // freq hop off
+                    0,    // hop period
+                    LORA_IQ_INVERSION_ON,
+                    true // continuous RX
+  );
+  Radio.Rx(0);
+
   /* USER CODE END SubghzApp_Init_2 */
 }
 
@@ -128,30 +145,43 @@ void SubghzApp_Init(void) {
 static void OnTxDone(void) {
   /* USER CODE BEGIN OnTxDone */
   txDone = true;
-  Radio.Sleep();
+  Radio.Rx(0);
   /* USER CODE END OnTxDone */
 }
 
 static void OnRxDone(uint8_t *payload, uint16_t size, int16_t rssi,
                      int8_t LoraSnr_FskCfo) {
   /* USER CODE BEGIN OnRxDone */
+  if (size != sizeof(struct ackPacket)) {
+    printf("RX %u bytes (expected ACK %u), RSSI=%d\r\n", size,
+           (unsigned)sizeof(struct ackPacket), rssi);
+    Radio.Rx(0);
+    return;
+  }
+  struct ackPacket receiveACK = {0};
+  memcpy(&receiveACK, payload, sizeof(struct ackPacket));
+  printf("ACK: seq=%u, node ID=%u\r\n", receiveACK.seqNum, receiveACK.nodeID);
+  packetACKED = true;
+  Radio.Rx(0);
   /* USER CODE END OnRxDone */
 }
 
 static void OnTxTimeout(void) {
   /* USER CODE BEGIN OnTxTimeout */
   txDone = true;
-  Radio.Sleep();
+  Radio.Rx(0);
   /* USER CODE END OnTxTimeout */
 }
 
 static void OnRxTimeout(void) {
   /* USER CODE BEGIN OnRxTimeout */
+  Radio.Rx(0);
   /* USER CODE END OnRxTimeout */
 }
 
 static void OnRxError(void) {
   /* USER CODE BEGIN OnRxError */
+  Radio.Rx(0);
   /* USER CODE END OnRxError */
 }
 
@@ -163,14 +193,16 @@ void sendWeatherData(struct weatherData *data, uint8_t nodeID) {
     printf("Radio busy, skipping packet\r\n");
     return;
   }
-
-  struct packet weatherPacket = {.pressure = data->pressure,
-                                 .temperature = data->temperature,
-                                 .humidity = data->humidity,
-                                 .seqNum = seqNum++,
-                                 .nodeID = nodeID};
+  if (packetACKED)
+    seqNum++;
+  struct dataPacket weatherPacket = {.pressure = data->pressure,
+                                     .temperature = data->temperature,
+                                     .humidity = data->humidity,
+                                     .seqNum = seqNum,
+                                     .nodeID = nodeID};
 
   txDone = false;
+  packetACKED = false;
   printf("Sending...\r\n");
   Radio.Send((uint8_t *)&weatherPacket, sizeof(weatherPacket));
 }
