@@ -35,6 +35,7 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 struct __attribute__((packed)) dataPacket {
+  uint32_t timestamp;
   int32_t temperature;
   uint32_t pressure;
   uint32_t humidity;

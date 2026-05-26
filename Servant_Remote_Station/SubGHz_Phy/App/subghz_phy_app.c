@@ -21,10 +21,12 @@
 /* Includes ------------------------------------------------------------------*/
 #include "subghz_phy_app.h"
 #include "platform.h"
+#include "radio.h"
 #include "sys_app.h"
 
 /* USER CODE BEGIN Includes */
 #include "../../Middlewares/Third_Party/SubGHz_Phy/radio_driver/radio.h"
+#include <stdint.h>
 #include <string.h>
 /* USER CODE END Includes */
 
@@ -186,24 +188,36 @@ static void OnRxError(void) {
 }
 
 /* USER CODE BEGIN PrFD */
-void sendWeatherData(struct weatherData *data, uint8_t nodeID) {
+void sendWeatherData(struct weatherData *data, uint8_t nodeID,
+                     RTC_HandleTypeDef *hrtc) {
   static uint16_t seqNum = 0;
+  RTC_TimeTypeDef currTime = {0};
+  RTC_DateTypeDef currDate = {0};
+  uint32_t timestamp = 0;
 
   if (!txDone) {
     printf("Radio busy, skipping packet\r\n");
     return;
   }
-  if (packetACKED)
+  if (packetACKED) {
+    HAL_RTC_GetTime(hrtc, &currTime, RTC_FORMAT_BIN);
+    // this value is not needed, only needs to be called for time to be accurate
+    HAL_RTC_GetDate(hrtc, &currDate, RTC_FORMAT_BIN);
+    timestamp = (currTime.Hours * 60 * 60) + (currTime.Minutes * 60) +
+                (currTime.Seconds);
     seqNum++;
+  }
+
   struct dataPacket weatherPacket = {.pressure = data->pressure,
                                      .temperature = data->temperature,
                                      .humidity = data->humidity,
                                      .seqNum = seqNum,
-                                     .nodeID = nodeID};
+                                     .nodeID = nodeID,
+                                     .timestamp = timestamp};
 
   txDone = false;
   packetACKED = false;
   printf("Sending...\r\n");
-  Radio.Send((uint8_t *)&weatherPacket, sizeof(weatherPacket));
+  Radio.Send((uint8_t *)&weatherPacket, sizeof(struct dataPacket));
 }
 /* USER CODE END PrFD */

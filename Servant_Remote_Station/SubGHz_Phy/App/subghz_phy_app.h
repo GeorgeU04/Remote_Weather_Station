@@ -37,6 +37,7 @@ extern "C" {
 /* USER CODE BEGIN ET */
 
 struct __attribute__((packed)) dataPacket {
+  uint32_t timestamp;
   int32_t temperature;
   uint32_t pressure;
   uint32_t humidity;
@@ -78,12 +79,13 @@ extern bool packetACKED;
 
 /* Exported functions prototypes ---------------------------------------------*/
 /**
- * @brief  Init Subghz Application
- */
+  * @brief  Init Subghz Application
+  */
 void SubghzApp_Init(void);
 
 /* USER CODE BEGIN EFP */
-void sendWeatherData(struct weatherData *data, uint8_t nodeID);
+void sendWeatherData(struct weatherData *data, uint8_t nodeID,
+                     RTC_HandleTypeDef *hrtc);
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

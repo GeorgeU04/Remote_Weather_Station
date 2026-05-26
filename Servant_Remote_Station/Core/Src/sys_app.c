@@ -23,7 +23,6 @@
 #include "platform.h"
 #include "sys_app.h"
 #include "stm32_systime.h"
-#include "stm32_timer.h"
 #include "timer_if.h"
 #include "utilities_def.h"
 
@@ -70,15 +69,6 @@ void SystemApp_Init(void)
 
   /* USER CODE END SystemApp_Init_1 */
 
-  /* SubGHz_Phy_PingPong: RTC-backed timer server for middleware (Radio TX timeout, etc.) */
-  __HAL_RCC_WAKEUPSTOP_CLK_CONFIG(RCC_STOP_WAKEUPCLOCK_MSI);
-
-  UTIL_TIMER_Init();
-  SYS_TimerInitialisedFlag = 1;
-
-  /* USER CODE BEGIN SystemApp_Init_2 */
-
-  /* USER CODE END SystemApp_Init_2 */
 }
 
 /* USER CODE BEGIN EF */
@@ -102,8 +92,7 @@ extern __IO uint32_t uwTick;
 /* USER CODE END Overload_HAL_weaks_1a */
 
 /**
-  * @note After UTIL_TIMER_Init(), return milliseconds from RTC timebase (PingPong pattern).
-  *       Before that, use SysTick-driven uwTick from default HAL_InitTick().
+  * @note This function overwrites the __weak one from HAL
   */
 uint32_t HAL_GetTick(void)
 {
@@ -114,13 +103,19 @@ uint32_t HAL_GetTick(void)
   /* USER CODE END HAL_GetTick_1 */
   if (SYS_TimerInitialisedFlag == 0)
   {
+    /* TIMER_IF_GetTimerValue should be used only once UTIL_TIMER_Init() is initialized */
+    /* If HAL_Delay or a TIMEOUT countdown is necessary during initialization phase */
+    /* please use temporarily another timebase source (SysTick or TIMx), which implies also */
+    /* to rework the above function HAL_InitTick() and to call HAL_IncTick() on the timebase IRQ */
+    /* Note: when TIMER_IF is based on RTC, stm32wlxx_hal_rtc.c calls this function before TimeServer is functional */
+    /* RTC TIMEOUT will not expire, i.e. if RTC has an hw problem it will keep looping in the RTC_Init function */
     /* USER CODE BEGIN HAL_GetTick_EarlyCall */
     ret = uwTick;
     /* USER CODE END HAL_GetTick_EarlyCall */
   }
   else
   {
-    ret = UTIL_TIMER_GetCurrentTime();
+    ret = TIMER_IF_GetTimerValue();
   }
   /* USER CODE BEGIN HAL_GetTick_2 */
 
