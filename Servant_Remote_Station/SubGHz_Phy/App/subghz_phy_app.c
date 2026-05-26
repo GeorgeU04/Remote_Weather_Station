@@ -200,11 +200,12 @@ void sendWeatherData(struct weatherData *data, uint8_t nodeID,
     return;
   }
   if (packetACKED) {
-    HAL_RTC_GetTime(hrtc, &currTime, RTC_FORMAT_BIN);
+    if (HAL_RTC_GetTime(hrtc, &currTime, RTC_FORMAT_BIN) == HAL_OK) {
+      timestamp = (currTime.Hours * 60 * 60) + (currTime.Minutes * 60) +
+                  (currTime.Seconds);
+    }
     // this value is not needed, only needs to be called for time to be accurate
     HAL_RTC_GetDate(hrtc, &currDate, RTC_FORMAT_BIN);
-    timestamp = (currTime.Hours * 60 * 60) + (currTime.Minutes * 60) +
-                (currTime.Seconds);
     seqNum++;
   }
 
