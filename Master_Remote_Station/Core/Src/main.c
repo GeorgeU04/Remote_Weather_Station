@@ -23,8 +23,10 @@
 /* USER CODE BEGIN Includes */
 #include "../../SubGHz_Phy/App/app_subghz_phy.h"
 #include "../../SubGHz_Phy/App/subghz_phy_app.h"
+#include "stm32wlxx_hal_uart.h"
+#include "stm32wlxx_nucleo.h"
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -124,12 +126,11 @@ int main(void) {
     MX_SubGHz_Phy_Process();
     if (rxReady) {
       rxReady = false;
-      printf("Timestamp: %lu\r\n", rxPacket.timestamp);
-      printf("Node ID: %d\r\n", rxPacket.nodeID);
-      printf("Seq Num: %d\r\n", rxPacket.seqNum);
-      printf("Temperature: %ld\r\n", rxPacket.temperature);
-      printf("Humidity: %lu\r\n", rxPacket.humidity);
-      printf("Pressure: %lu\r\n", rxPacket.pressure);
+      HAL_UART_Transmit(&hcom_uart[COM1], (uint8_t *)&rxPacket,
+                        sizeof(struct dataPacket), COM_POLL_TIMEOUT);
+      // Format: NodeID:TimeStamp:Temperature:Humidity:Pressure
+      // printf("%u:%lu:%ld:%lu:%lu\r\n", rxPacket.nodeID, rxPacket.timestamp,
+      //      rxPacket.temperature, rxPacket.humidity, rxPacket.pressure);
     }
 
     /* USER CODE BEGIN 3 */

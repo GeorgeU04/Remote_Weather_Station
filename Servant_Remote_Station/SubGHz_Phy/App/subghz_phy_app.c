@@ -21,7 +21,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "subghz_phy_app.h"
 #include "platform.h"
-#include "radio.h"
 #include "sys_app.h"
 
 /* USER CODE BEGIN Includes */

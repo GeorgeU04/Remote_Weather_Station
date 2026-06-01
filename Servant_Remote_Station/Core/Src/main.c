@@ -69,7 +69,7 @@ static void MX_RTC_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 struct BME280 sensor = {0};
-const uint8_t NODE_ID = 1;
+const uint8_t NODE_ID = 0;
 const uint32_t timeBetweenSendsMS = 5000U;
 /* USER CODE END 0 */
 

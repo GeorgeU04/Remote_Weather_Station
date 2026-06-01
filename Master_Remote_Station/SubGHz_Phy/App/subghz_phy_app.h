@@ -39,7 +39,7 @@ struct __attribute__((packed)) dataPacket {
   int32_t temperature;
   uint32_t pressure;
   uint32_t humidity;
-  uint16_t seqNum;
+  uint8_t seqNum;
   uint8_t nodeID;
 };
 

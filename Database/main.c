@@ -1,0 +1,169 @@
+#include "database.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <termios.h>
+#include <unistd.h>
+
+/*
+ * Terminal Usage:
+ * a.out [OPTIONS] [NUM_OF_SENSORS <= 12] [PAGE_SIZE] [Serial Port]
+ * OPTIONS:
+ * -B Page Size in Bytes
+ * -K Page Size in Kilobytes
+ * -M Page Size in Megabytes
+ */
+
+uint8_t static strToUint8(const char *str, uint8_t *ret) {
+  char *end;
+  uint64_t value = strtoul(str, &end, 10);
+
+  if (errno == ERANGE || value > 12 || *end != '\0') {
+    return EXIT_FAILURE;
+  }
+  *ret = (uint8_t)value;
+  return EXIT_SUCCESS;
+}
+
+uint8_t static strToUint64(const char *str, uint64_t *ret) {
+  char *end;
+  uint64_t value = strtoul(str, &end, 10);
+
+  if (errno == ERANGE || *end != '\0') {
+    return EXIT_FAILURE;
+  }
+  *ret = (uint64_t)value;
+  return EXIT_SUCCESS;
+}
+
+uint8_t static setUART(int32_t *serialPort, const char *port) {
+  *serialPort = open(port, O_RDWR | O_NOCTTY);
+
+  // Check for errors
+  if (*serialPort < 0) {
+    return EXIT_FAILURE;
+  }
+  struct termios portSettings = {0};
+  tcgetattr(*serialPort, &portSettings);
+  // Enable NON CANONICAL Mode for Serial Port Comm
+  portSettings.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  // Turn OFF software based flow control (XON/XOFF).
+  portSettings.c_iflag &= ~(IXON | IXOFF | IXANY);
+  // Turn ON the receiver of the serial port (CREAD)
+  portSettings.c_cflag |= CREAD | CLOCAL;
+  // Turn OFF Hardware based flow control RTS/CTS
+  portSettings.c_cflag &= ~CRTSCTS;
+  // Disable parity bit
+  portSettings.c_cflag &= ~PARENB;
+  // Enable 1 stop bit
+  portSettings.c_cflag &= ~CSTOPB;
+  // Clear current character size mask
+  portSettings.c_cflag &= ~CSIZE;
+  // Set 8 bits for character size
+  portSettings.c_cflag |= CS8;
+  cfsetispeed(&portSettings, B115200);
+  cfsetospeed(&portSettings, B115200);
+  portSettings.c_cc[VMIN] = 20;  // Read at least 20 Bytes before returning
+  portSettings.c_cc[VTIME] = 40; // Set timeout to 4 seconds, 40 * 100ms = 4s
+  tcsetattr(*serialPort, TCSANOW, &portSettings);
+  return EXIT_SUCCESS;
+}
+
+uint8_t static readUART(int32_t serialPort, struct weatherData *data,
+                        uint8_t *nodeID) {
+  struct dataPacket temp = {0};
+  if (tcflush(serialPort, TCIOFLUSH) != 0)
+    return EXIT_FAILURE;
+  if ((read(serialPort, &temp, sizeof(struct dataPacket))) == -1)
+    return EXIT_FAILURE;
+  *nodeID = temp.nodeID;
+  data->temperature = temp.temperature;
+  data->humidity = temp.humidity;
+  data->pressure = temp.pressure;
+  data->timeStamp = temp.timestamp;
+  return EXIT_SUCCESS;
+}
+
+int main(int argc, char *argv[]) {
+
+  if (argc != 5) {
+    fprintf(stderr,
+            "Usage: %s [-B | -K | -M | -G] [NUM_OF_SENSORS <= 12] [PAGE_SIZE] "
+            "[Serial Port]\n",
+            argv[0]);
+    return EXIT_FAILURE;
+  }
+
+  uint8_t error = 0;
+  uint8_t val8;
+  error = strToUint8(argv[2], &val8);
+  if (error) {
+    fprintf(stderr, "[ERROR]: NUM_OF_SENSORS Must be a Valid Unsigned Integer "
+                    "Less Than or Equal to 12\n");
+    return EXIT_FAILURE;
+  }
+  if (val8 == 0) {
+    fprintf(stderr, "[ERROR]: NUM_OF_SENSORS Must be Greater Than 0\n");
+    return EXIT_FAILURE;
+  }
+  uint8_t numOfSensors = val8;
+
+  uint64_t val64;
+  error = strToUint64(argv[3], &val64);
+  if (error) {
+    fprintf(stderr,
+            "[ERROR]: PAGE_SIZE Must be a Valid 64 bit Unsigned Integer\n");
+    return EXIT_FAILURE;
+  }
+  if (val64 < sizeof(struct weatherData)) {
+    fprintf(stderr, "[ERROR]: PAGE_SIZE Must be at least %zu Bytes\n",
+            sizeof(struct weatherData));
+    return EXIT_FAILURE;
+  }
+  uint64_t pageSize = val64;
+  char *sizeFlag = argv[1];
+  if (strcmp(sizeFlag, "-B") == 0) {
+    ;
+  } else if (strcmp(sizeFlag, "-K") == 0) {
+    pageSize *= 1024;
+  } else if (strcmp(sizeFlag, "-M") == 0) {
+    pageSize *= 1024 * 1024;
+  } else if (strcmp(sizeFlag, "-G") == 0) {
+    pageSize *= 1024 * 1024 * 1024;
+  } else {
+    fprintf(stderr, "[ERROR]: Size Flag Must be -B, -K, -M, or ,-G\n");
+    return EXIT_FAILURE;
+  }
+
+  const char *serialPortStr = argv[4];
+  int32_t serialPort = 0;
+  struct weatherData data = {0};
+  uint8_t nodeID;
+  error = initDatabase(numOfSensors, pageSize);
+  printf("Page Size: %luB\n", pageSize);
+  if (error) {
+    fprintf(stderr, "[ERROR]: Failed to Create Database\n");
+    return EXIT_FAILURE;
+  }
+
+  error = setUART(&serialPort, serialPortStr);
+  if (error) {
+    fprintf(stderr, "[ERROR]: Failed to Initialize UART Port\n");
+    return EXIT_FAILURE;
+  }
+  while (1) {
+    error = readUART(serialPort, &data, &nodeID);
+    if (error)
+      continue;
+    insert(nodeID, &data);
+    printf("NodeID: %" PRIu8 "\nTimestamp: %" PRIu32 "\nTemperature: %" PRId32
+           "\nHumidity: %" PRIu32 "\nPressure: %" PRIu32 "\n",
+           nodeID, data.timeStamp, data.temperature, data.humidity,
+           data.pressure);
+  }
+  return EXIT_SUCCESS;
+}

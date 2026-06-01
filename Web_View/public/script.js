@@ -1,25 +1,46 @@
-const temperatureLabel = document.getElementById("temperatureLabel");
-const humidityLabel = document.getElementById("humidityLabel");
-const pressureLabel = document.getElementById("pressureLabel");
+async function getLatest(nodeID) {
+  const response = await fetch(`/api/sensor/${nodeID}/latest`);
+  const result = await response.json();
 
-const socket = new WebSocket("ws://localhost:3000");
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
 
-let temperature = 0;
-let humidity = 0;
-let pressure = 0;
-socket.addEventListener("message", (event) => {
-  const line = event.data.trim();
-  if (line.startsWith("Temperature:")) {
-    temperature = parseFloat(line.split(":")[1].trim()) / 100;
-    temperatureLabel.textContent = temperature;
-  }
-  else if (line.startsWith("Humidity:")) {
-    humidity = (parseFloat(line.split(":")[1].trim()) / 1024).toFixed(2);
-    humidityLabel.textContent = humidity;
-  }
-  else if (line.startsWith("Pressure:")) {
-    pressure = parseFloat((line.split(":")[1].trim()) / 256).toFixed(2);
-    pressureLabel.textContent = pressure;
-  }
-});
+  return result.data;
+}
 
+async function getAllReadings(nodeID) {
+  const response = await fetch(`/api/sensor/${nodeID}/all`);
+  const result = await response.json();
+
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+
+  return result.data;
+}
+
+async function updateLatestDisplay(nodeID) {
+  try {
+    const data = await getLatest(nodeID);
+
+    if (!data) {
+      return;
+    }
+
+    document.getElementById("temperature").textContent = data.temperature;
+    document.getElementById("pressure").textContent = data.pressure;
+    document.getElementById("humidity").textContent = data.humidity;
+    document.getElementById("timestamp").textContent = data.timeStamp;
+  } catch (err) {
+    console.error("Failed to update latest display:", err);
+  }
+}
+
+// Update once immediately
+updateLatestDisplay(0);
+
+// Then update every 5 seconds
+setInterval(() => {
+  updateLatestDisplay(0);
+}, 5000);
