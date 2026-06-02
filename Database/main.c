@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -155,15 +156,63 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "[ERROR]: Failed to Initialize UART Port\n");
     return EXIT_FAILURE;
   }
+  char buffer[8192];
+  int32_t sock = 0;
+  int32_t RXSock = 0;
+  in_port_t port = 9000;
+  struct sockaddr_in address = {0};
+  address.sin_family = AF_INET;
+  address.sin_port = htons(port);
+  address.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  error = createServer(&sock, &RXSock, address);
+  if (error) {
+    fprintf(stderr, "[ERROR]: Failed to Create Server Port\n");
+    return EXIT_FAILURE;
+  }
   while (1) {
+    buffer[0] = '\0';
+    /* Accept Client */
+    if (RXSock == -1) {
+      error = acceptClient(sock, &RXSock, address);
+
+      if (error) {
+        fprintf(stderr, "[ERROR]: Failed to Accept Client\n");
+        continue;
+      }
+    }
+    /* Receive Command */
+    if (RXSock != -1) {
+      error = receiveCommand(RXSock, buffer, sizeof(buffer));
+
+      if (error) {
+        close(RXSock);
+        RXSock = -1;
+        continue;
+      }
+
+      if (buffer[0] != '\0') {
+        printf("Command: %s", buffer);
+        // JSON Handling
+        close(RXSock);
+        RXSock = -1;
+      }
+    }
+
+    /* Read UART */
     error = readUART(serialPort, &data, &nodeID);
-    if (error)
-      continue;
-    insert(nodeID, &data);
-    printf("NodeID: %" PRIu8 "\nTimestamp: %" PRIu32 "\nTemperature: %" PRId32
-           "\nHumidity: %" PRIu32 "\nPressure: %" PRIu32 "\n",
-           nodeID, data.timeStamp, data.temperature, data.humidity,
-           data.pressure);
+
+    if (!error) {
+      error = insert(nodeID, &data);
+
+      if (!error) {
+        printf("NodeID: %" PRIu8 "\nTimestamp: %" PRIu32
+               "\nTemperature: %" PRId32 "\nHumidity: %" PRIu32
+               "\nPressure: %" PRIu32 "\n",
+               nodeID, data.timeStamp, data.temperature, data.humidity,
+               data.pressure);
+      }
+    }
   }
   return EXIT_SUCCESS;
 }

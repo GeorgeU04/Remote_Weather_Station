@@ -5,7 +5,6 @@ const {
   readLast,
   readAll,
   readN,
-  insert
 } = require("./dbClient");
 
 const app = express();

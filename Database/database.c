@@ -1,9 +1,16 @@
 #include "database.h"
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
+#include <errno.h>
+#include <netinet/in.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 const uint8_t MAX_NUM_SENSORS = 12;
 uint32_t maxNumOfEntries = 0;
@@ -143,3 +150,61 @@ uint8_t readN(uint8_t nodeID, uint32_t n, uint32_t *recordsRead,
   *recordsRead = n;
   return EXIT_SUCCESS;
 }
+
+uint8_t createServer(int32_t *sock, int32_t *RXSock,
+                     struct sockaddr_in address) {
+  if (!sock || !RXSock)
+    return EXIT_FAILURE;
+  *sock = -1;
+  *RXSock = -1;
+  *sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+  if (*sock == -1)
+    return EXIT_FAILURE;
+  int32_t opt = 1;
+  setsockopt(*sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+  socklen_t addressSize = sizeof(address);
+  if (bind(*sock, (struct sockaddr *)&address, addressSize) == -1)
+    return EXIT_FAILURE;
+  if (listen(*sock, 1) == -1)
+    return EXIT_FAILURE;
+  return EXIT_SUCCESS;
+}
+
+uint8_t acceptClient(int32_t sock, int32_t *RXSock,
+                     struct sockaddr_in address) {
+  if (!RXSock)
+    return EXIT_FAILURE;
+  socklen_t addressSize = sizeof(address);
+  *RXSock =
+      accept4(sock, (struct sockaddr *)&address, &addressSize, SOCK_NONBLOCK);
+  if (*RXSock == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+      return EXIT_SUCCESS;
+    return EXIT_FAILURE;
+  }
+  return EXIT_SUCCESS;
+}
+
+uint8_t receiveCommand(int32_t RXsock, char *command, size_t commandSize) {
+  ssize_t n = 0;
+  if (!command || commandSize == 0)
+    return EXIT_FAILURE;
+  n = read(RXsock, command, commandSize - 1);
+  // add extra reads if n != sizeof(buffer) -1
+  if (n == -1) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      command[0] = '\0';
+      return EXIT_SUCCESS;
+    } else {
+      return EXIT_FAILURE;
+    }
+  }
+  if (n == 0) {
+    command[0] = '\0';
+    return EXIT_FAILURE;
+  }
+  command[n] = '\0';
+  return EXIT_SUCCESS;
+}
+
+uint8_t sendJSONData(int32_t RXsock, const char *data) { return EXIT_SUCCESS; }
