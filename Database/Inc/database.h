@@ -35,6 +35,6 @@ uint8_t createServer(int32_t *sock, int32_t *RXSock,
                      struct sockaddr_in address);
 uint8_t receiveCommand(int32_t RXsock, char *command, size_t commandSize);
 uint8_t acceptClient(int32_t sock, int32_t *RXSock, struct sockaddr_in address);
-uint8_t sendJSONData(int32_t RXsock, const char *data);
+uint8_t sendJSONData(int32_t RXsock, char *data);
 
 #endif // !DATABASE_H

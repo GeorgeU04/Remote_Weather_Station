@@ -1,7 +1,9 @@
-#include "database.h"
+#include "../Inc/database.h"
+#include "../Inc/misc.h"
 #include <asm-generic/errno-base.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <netinet/in.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -20,13 +22,13 @@ uint32_t recordCountArr[12] = {0};
 uint8_t SetNumOfSensors = 0;
 
 uint8_t initDatabase(uint8_t numOfSensors, uint64_t pageSize) {
-  char fileName[14] = {0};
+  char fileName[19] = {0};
   memset(recordCountArr, 0, sizeof(recordCountArr));
   memset(idxArr, 0, sizeof(idxArr));
   memset(fptrArr, 0, sizeof(fptrArr));
   SetNumOfSensors = numOfSensors;
   for (size_t i = 0; i < numOfSensors; ++i) {
-    if (snprintf(fileName, sizeof(fileName), "sensor_%zu.dat", i) < 0) {
+    if (snprintf(fileName, sizeof(fileName), "Data/sensor_%zu.dat", i) < 0) {
       return EXIT_FAILURE;
     }
     fptrArr[i] = fopen(fileName, "wb+");
@@ -207,4 +209,93 @@ uint8_t receiveCommand(int32_t RXsock, char *command, size_t commandSize) {
   return EXIT_SUCCESS;
 }
 
-uint8_t sendJSONData(int32_t RXsock, const char *data) { return EXIT_SUCCESS; }
+uint8_t sendJSONData(int32_t RXsock, char *data) {
+  if (!data)
+    return EXIT_FAILURE;
+  char *identifier;
+  char *nodeIDStr;
+  uint8_t error = 0;
+  struct weatherData wData = {0};
+  identifier = strtok(data, " ");
+  if (!identifier)
+    return EXIT_FAILURE;
+
+  nodeIDStr = strtok(NULL, " ");
+  if (!nodeIDStr)
+    return EXIT_FAILURE;
+  nodeIDStr[strlen(nodeIDStr) - 1] = '\0'; // get rid of the new line
+
+  uint8_t nodeID = 0;
+  error = strToUint8(nodeIDStr, &nodeID);
+  if (error)
+    return EXIT_FAILURE;
+  /* Handle READ_LAST */
+  // Command: READ_LAST {NODE_ID}
+  // JSON:
+  // {
+  //   ok: true,
+  //   recordsRead: 1,
+  //   data: [{ temperature, pressure, humidity, timeStamp }]
+  // }
+
+  uint32_t recordsRead = 0;
+  if (strcmp(identifier, "READ_LAST") == 0) {
+    error = readLast(nodeID, &wData); // failure point
+    if (error) {
+      recordsRead = 0;
+      return EXIT_FAILURE;
+    }
+    recordsRead = 1;
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer),
+             "{\"ok\": true,\"recordsRead\": 1, \"data\": [{ \"temperature\": "
+             "%" PRId32 ", \"pressure\": %" PRIu32 ", \"humidity\": %" PRIu32
+             ", \"timeStamp\": %" PRIu32 " }]}",
+             wData.temperature, wData.pressure, wData.humidity,
+             wData.timeStamp);
+    printf("%s\n", buffer);
+    if (write(RXsock, buffer, strlen(buffer)) < 0)
+      return EXIT_FAILURE;
+  }
+  /* Handle READ_ALL */
+  // Command: READ_ALL {NODE_ID}
+  // JSON:
+  // {
+  //   ok: true,
+  //   recordsRead: 5,
+  //   data: [...]
+  // }
+
+  else if (strcmp(identifier, "READ_ALL") == 0) {
+    error = readAll(nodeID, &recordsRead, &wData);
+    if (error) {
+      return EXIT_FAILURE;
+    }
+  }
+  /* Handle READ_N */
+  // Command: READ_N {NODE_ID} {n}
+  // JSON:
+  // {
+  //   ok: true,
+  //   recordsRead: 5,
+  //   data: [...]
+  // }
+
+  else if (strcmp(identifier, "READ_N") == 0) {
+    uint32_t n = 0;
+    char *nStr;
+    nStr = strtok(data, " ");
+    if (!nStr)
+      return EXIT_FAILURE;
+    error = strToUint32(nStr, &n);
+    if (error)
+      return EXIT_FAILURE;
+    error = readN(nodeID, n, &recordsRead, &wData);
+    if (error) {
+      return EXIT_FAILURE;
+    }
+  } else
+    return EXIT_FAILURE;
+
+  return EXIT_SUCCESS;
+}

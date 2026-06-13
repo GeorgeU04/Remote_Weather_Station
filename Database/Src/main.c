@@ -1,5 +1,5 @@
-#include "database.h"
-#include <errno.h>
+#include "../Inc/database.h"
+#include "../Inc/misc.h"
 #include <fcntl.h>
 #include <inttypes.h>
 #include <netinet/in.h>
@@ -18,28 +18,6 @@
  * -K Page Size in Kilobytes
  * -M Page Size in Megabytes
  */
-
-uint8_t static strToUint8(const char *str, uint8_t *ret) {
-  char *end;
-  uint64_t value = strtoul(str, &end, 10);
-
-  if (errno == ERANGE || value > 12 || *end != '\0') {
-    return EXIT_FAILURE;
-  }
-  *ret = (uint8_t)value;
-  return EXIT_SUCCESS;
-}
-
-uint8_t static strToUint64(const char *str, uint64_t *ret) {
-  char *end;
-  uint64_t value = strtoul(str, &end, 10);
-
-  if (errno == ERANGE || *end != '\0') {
-    return EXIT_FAILURE;
-  }
-  *ret = (uint64_t)value;
-  return EXIT_SUCCESS;
-}
 
 uint8_t static setUART(int32_t *serialPort, const char *port) {
   *serialPort = open(port, O_RDWR | O_NOCTTY);
@@ -102,7 +80,7 @@ int main(int argc, char *argv[]) {
   uint8_t error = 0;
   uint8_t val8;
   error = strToUint8(argv[2], &val8);
-  if (error) {
+  if (error || val8 > 12) {
     fprintf(stderr, "[ERROR]: NUM_OF_SENSORS Must be a Valid Unsigned Integer "
                     "Less Than or Equal to 12\n");
     return EXIT_FAILURE;
@@ -143,7 +121,8 @@ int main(int argc, char *argv[]) {
   const char *serialPortStr = argv[4];
   int32_t serialPort = 0;
   struct weatherData data = {0};
-  uint8_t nodeID;
+  uint8_t nodeID = 0;
+
   error = initDatabase(numOfSensors, pageSize);
   printf("Page Size: %luB\n", pageSize);
   if (error) {
@@ -156,7 +135,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "[ERROR]: Failed to Initialize UART Port\n");
     return EXIT_FAILURE;
   }
-  char buffer[8192];
+
+  char buffer[32];
   int32_t sock = 0;
   int32_t RXSock = 0;
   in_port_t port = 9000;
@@ -171,6 +151,7 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   while (1) {
+
     buffer[0] = '\0';
     /* Accept Client */
     if (RXSock == -1) {
@@ -194,11 +175,15 @@ int main(int argc, char *argv[]) {
       if (buffer[0] != '\0') {
         printf("Command: %s", buffer);
         // JSON Handling
+        error = sendJSONData(RXSock, buffer);
+        if (error) {
+          fprintf(stderr, "[ERROR]: Failed to Send JSON Data\n");
+          continue;
+        }
         close(RXSock);
         RXSock = -1;
       }
     }
-
     /* Read UART */
     error = readUART(serialPort, &data, &nodeID);
 
@@ -212,7 +197,8 @@ int main(int argc, char *argv[]) {
                nodeID, data.timeStamp, data.temperature, data.humidity,
                data.pressure);
       }
-    }
+    } else
+      fprintf(stderr, "[ERROR]: Failed to Read UART\n");
   }
   return EXIT_SUCCESS;
 }
