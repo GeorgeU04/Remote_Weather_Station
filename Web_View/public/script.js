@@ -20,6 +20,17 @@ async function getAllReadings(nodeID) {
   return result.data;
 }
 
+async function getNReadings(nodeID, n) {
+  const response = await fetch(`/api/sensor/${nodeID}/last/${n}`);
+  const result = await response.json();
+
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
+
+  return result.data;
+}
+
 async function updateLatestDisplay(nodeID) {
   try {
     const data = await getLatest(nodeID);
@@ -28,10 +39,14 @@ async function updateLatestDisplay(nodeID) {
       return;
     }
 
-    document.getElementById("temperature").textContent = data.temperature;
-    document.getElementById("pressure").textContent = data.pressure;
-    document.getElementById("humidity").textContent = data.humidity;
-    document.getElementById("timestamp").textContent = data.timeStamp;
+    let temperature = data.temperature / 100;
+    let pressure = data.pressure / 256;
+    let humidity = data.humidity / 1024;
+
+    document.getElementById("temperature").textContent = temperature.toFixed(2);
+    document.getElementById("pressure").textContent = pressure.toFixed(2);
+    document.getElementById("humidity").textContent = humidity.toFixed(2);
+    document.getElementById("timeStamp").textContent = data.timeStamp;
   } catch (err) {
     console.error("Failed to update latest display:", err);
   }

@@ -3,5 +3,6 @@ Servant_Remote_Station/build/*
 Master_Remote_Station/build/*
 Servant_Remote_Station/.cache/*
 *.md
-Database/*.out
-Database/*.dat
+*.dat
+*.o
+*.out

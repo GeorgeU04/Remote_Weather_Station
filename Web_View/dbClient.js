@@ -15,7 +15,7 @@ function sendDatabaseCommand(command) {
       client.destroy();
     };
 
-    client.setTimeout(3000);
+    client.setTimeout(8000);
 
     client.connect(DB_PORT, DB_HOST, () => {
       client.write(command + "\n");
