@@ -101,6 +101,6 @@ app.get("/api/sensor/:nodeID/last/:n", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Web server listening on http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Web server listening on http://0.0.0.0:${PORT}`);
 });

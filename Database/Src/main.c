@@ -98,11 +98,7 @@ int main(int argc, char *argv[]) {
             "[ERROR]: PAGE_SIZE Must be a Valid 64 bit Unsigned Integer\n");
     return EXIT_FAILURE;
   }
-  if (val64 < sizeof(struct weatherData)) {
-    fprintf(stderr, "[ERROR]: PAGE_SIZE Must be at least %zu Bytes\n",
-            sizeof(struct weatherData));
-    return EXIT_FAILURE;
-  }
+
   uint64_t pageSize = val64;
   char *sizeFlag = argv[1];
   if (strcmp(sizeFlag, "-B") == 0) {
@@ -118,6 +114,11 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
+  if (pageSize < sizeof(struct weatherData)) {
+    fprintf(stderr, "[ERROR]: PAGE_SIZE Must be at least %zu Bytes\n",
+            sizeof(struct weatherData));
+    return EXIT_FAILURE;
+  }
   const char *serialPortStr = argv[4];
   int32_t serialPort = 0;
   struct weatherData data = {0};
