@@ -3,7 +3,11 @@ const net = require("net");
 const DB_HOST = "127.0.0.1";
 const DB_PORT = 9000;
 
-function sendDatabaseCommand(command) {
+// The database server handles one TCP client at a time. Serialize commands here
+// so concurrent HTTP requests wait their turn instead of racing to connect.
+let commandTail = Promise.resolve();
+
+function sendDatabaseCommandOnce(command) {
   return new Promise((resolve, reject) => {
     const client = new net.Socket();
 
@@ -15,7 +19,16 @@ function sendDatabaseCommand(command) {
       client.destroy();
     };
 
-    client.setTimeout(8000);
+    const finish = (fn) => {
+      if (finished) {
+        return;
+      }
+      finished = true;
+      cleanup();
+      fn();
+    };
+
+    client.setTimeout(15000);
 
     client.connect(DB_PORT, DB_HOST, () => {
       client.write(command + "\n");
@@ -25,52 +38,61 @@ function sendDatabaseCommand(command) {
       response += chunk.toString();
 
       if (response.includes("\n")) {
-        finished = true;
-
         const line = response.trim();
-
-        cleanup();
 
         try {
           const parsed = JSON.parse(line);
 
           if (!parsed.ok) {
-            reject(new Error(parsed.error || "Database command failed"));
+            finish(() => reject(new Error(parsed.error || "Database command failed")));
             return;
           }
 
-          resolve(parsed);
+          finish(() => resolve(parsed));
         } catch (err) {
-          reject(new Error(`Invalid JSON from database: ${line}`));
+          finish(() => reject(new Error(`Invalid JSON from database: ${line}`)));
         }
       }
     });
 
     client.on("timeout", () => {
-      if (!finished) {
-        cleanup();
-        reject(new Error("Database socket timed out"));
-      }
+      finish(() => reject(new Error("Database socket timed out")));
     });
 
     client.on("error", err => {
-      if (!finished) {
-        cleanup();
-        reject(err);
-      }
+      finish(() => reject(err));
     });
 
     client.on("close", () => {
-      if (!finished && response.length > 0) {
+      if (finished) {
+        return;
+      }
+
+      if (response.length > 0) {
         try {
           const parsed = JSON.parse(response.trim());
-          resolve(parsed);
+
+          if (!parsed.ok) {
+            finish(() => reject(new Error(parsed.error || "Database command failed")));
+            return;
+          }
+
+          finish(() => resolve(parsed));
         } catch {
-          reject(new Error(`Socket closed with invalid response: ${response}`));
+          finish(() => reject(new Error(`Socket closed with invalid response: ${response}`)));
         }
+        return;
       }
+
+      finish(() => reject(new Error("Database connection closed before response")));
     });
   });
+}
+
+function sendDatabaseCommand(command) {
+  const result = commandTail.then(() => sendDatabaseCommandOnce(command));
+  commandTail = result.catch(() => {});
+  return result;
 }
 
 async function readLast(nodeID) {

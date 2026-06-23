@@ -215,38 +215,52 @@ uint8_t sendJSONData(int32_t RXsock, char *data) {
   char *identifier;
   char *nodeIDStr;
   uint8_t error = 0;
-  struct weatherData wData = {0};
+  uint32_t n = 0;
   identifier = strtok(data, " ");
   if (!identifier)
     return EXIT_FAILURE;
 
-  nodeIDStr = strtok(NULL, " ");
-  if (!nodeIDStr)
-    return EXIT_FAILURE;
-  nodeIDStr[strlen(nodeIDStr) - 1] = '\0'; // get rid of the new line
-
+  if (strcmp("READ_N", identifier) == 0) {
+    char *nStr;
+    nodeIDStr = strtok(NULL, " ");
+    if (!nodeIDStr)
+      return EXIT_FAILURE;
+    nStr = strtok(NULL, " \n");
+    if (!nStr)
+      return EXIT_FAILURE;
+    error = strToUint32(nStr, &n);
+    if (error) // fail point
+      return EXIT_FAILURE;
+  } else {
+    nodeIDStr = strtok(NULL, " \n");
+    if (!nodeIDStr)
+      return EXIT_FAILURE;
+  }
   uint8_t nodeID = 0;
   error = strToUint8(nodeIDStr, &nodeID);
   if (error)
     return EXIT_FAILURE;
+
   /* Handle READ_LAST */
   // Command: READ_LAST {NODE_ID}
   // JSON:
   // {
-  //   ok: true,
-  //   recordsRead: 1,
-  //   data: [{ temperature, pressure, humidity, timeStamp }]
+  //   "ok": true,
+  //   "recordsRead": 1,
+  //   "data": [{ "temperature": temp, "pressure": pres, "humidity": hum,
+  //   "timeStamp": time }]
   // }
 
   uint32_t recordsRead = 0;
   if (strcmp(identifier, "READ_LAST") == 0) {
-    error = readLast(nodeID, &wData); // failure point
+    struct weatherData wData = {0};
+    error = readLast(nodeID, &wData);
     if (error) {
       recordsRead = 0;
       return EXIT_FAILURE;
     }
     recordsRead = 1;
-    char buffer[256];
+    char buffer[128];
     snprintf(buffer, sizeof(buffer),
              "{\"ok\": true,\"recordsRead\": 1, \"data\": [{ \"temperature\": "
              "%" PRId32 ", \"pressure\": %" PRIu32 ", \"humidity\": %" PRIu32
@@ -261,16 +275,58 @@ uint8_t sendJSONData(int32_t RXsock, char *data) {
   // Command: READ_ALL {NODE_ID}
   // JSON:
   // {
-  //   ok: true,
-  //   recordsRead: 5,
-  //   data: [...]
+  //   "ok": true,
+  //   "recordsRead": 5,
+  //   "data": [...]
   // }
 
   else if (strcmp(identifier, "READ_ALL") == 0) {
-    error = readAll(nodeID, &recordsRead, &wData);
+    struct weatherData *wData =
+        malloc(sizeof(struct weatherData) * recordCountArr[nodeID]);
+    if (!wData)
+      return EXIT_FAILURE;
+    error = readAll(nodeID, &recordsRead, wData);
     if (error) {
+      free(wData);
       return EXIT_FAILURE;
     }
+    if (recordsRead == 0)
+      return EXIT_FAILURE;
+    size_t bufferSize = sizeof(char) * recordsRead * 75 * 50;
+    char *buffer = malloc(bufferSize);
+    if (!buffer) {
+      free(wData);
+      return EXIT_FAILURE;
+    }
+    buffer[0] = '\0';
+    uint32_t written = 0;
+    written += snprintf(
+        buffer, bufferSize,
+        "{\"ok\": true,\"recordsRead\": %" PRIu32 ", \"data\": [", recordsRead);
+    for (size_t i = 0; i < recordsRead - 1; ++i) {
+      written += snprintf(buffer + written, bufferSize - written,
+                          "{ \"temperature\": "
+                          "%" PRId32 ", \"pressure\": %" PRIu32
+                          ", \"humidity\": %" PRIu32 ", \"timeStamp\": %" PRIu32
+                          " }, ",
+                          wData[i].temperature, wData[i].pressure,
+                          wData[i].humidity, wData[i].timeStamp);
+    }
+    snprintf(buffer + written, bufferSize - written,
+             "{ \"temperature\": "
+             "%" PRId32 ", \"pressure\": %" PRIu32 ", \"humidity\": %" PRIu32
+             ", \"timeStamp\": %" PRIu32 " }]}",
+             wData[recordsRead - 1].temperature,
+             wData[recordsRead - 1].pressure, wData[recordsRead - 1].humidity,
+             wData[recordsRead - 1].timeStamp);
+    printf("%s\n", buffer);
+    if (write(RXsock, buffer, strlen(buffer)) < 0) {
+      free(wData);
+      free(buffer);
+      return EXIT_FAILURE;
+    }
+    free(buffer);
+    free(wData);
   }
   /* Handle READ_N */
   // Command: READ_N {NODE_ID} {n}
@@ -282,20 +338,52 @@ uint8_t sendJSONData(int32_t RXsock, char *data) {
   // }
 
   else if (strcmp(identifier, "READ_N") == 0) {
-    uint32_t n = 0;
-    char *nStr;
-    nStr = strtok(data, " ");
-    if (!nStr)
+    struct weatherData *wData = malloc(sizeof(struct weatherData) * n);
+    if (!wData)
       return EXIT_FAILURE;
-    error = strToUint32(nStr, &n);
-    if (error)
-      return EXIT_FAILURE;
-    error = readN(nodeID, n, &recordsRead, &wData);
+    error = readN(nodeID, n, &recordsRead, wData);
     if (error) {
+      free(wData);
       return EXIT_FAILURE;
     }
+    if (recordsRead == 0)
+      return EXIT_FAILURE;
+    size_t bufferSize = sizeof(char) * recordsRead * 75 * 50;
+    char *buffer = malloc(bufferSize);
+    if (!buffer) {
+      free(wData);
+      return EXIT_FAILURE;
+    }
+    buffer[0] = '\0';
+    uint32_t written = 0;
+    written += snprintf(
+        buffer, bufferSize,
+        "{\"ok\": true,\"recordsRead\": %" PRIu32 ", \"data\": [", recordsRead);
+    for (size_t i = 0; i < recordsRead - 1; ++i) {
+      written += snprintf(buffer + written, bufferSize - written,
+                          "{ \"temperature\": "
+                          "%" PRId32 ", \"pressure\": %" PRIu32
+                          ", \"humidity\": %" PRIu32 ", \"timeStamp\": %" PRIu32
+                          " }, ",
+                          wData[i].temperature, wData[i].pressure,
+                          wData[i].humidity, wData[i].timeStamp);
+    }
+    snprintf(buffer + written, bufferSize - written,
+             "{ \"temperature\": "
+             "%" PRId32 ", \"pressure\": %" PRIu32 ", \"humidity\": %" PRIu32
+             ", \"timeStamp\": %" PRIu32 " }]}",
+             wData[recordsRead - 1].temperature,
+             wData[recordsRead - 1].pressure, wData[recordsRead - 1].humidity,
+             wData[recordsRead - 1].timeStamp);
+    printf("%s\n", buffer);
+    if (write(RXsock, buffer, strlen(buffer)) < 0) {
+      free(buffer);
+      free(wData);
+      return EXIT_FAILURE;
+    }
+    free(wData);
+    free(buffer);
   } else
     return EXIT_FAILURE;
-
   return EXIT_SUCCESS;
 }

@@ -19,7 +19,7 @@
  * -M Page Size in Megabytes
  */
 
-uint8_t static setUART(int32_t *serialPort, const char *port) {
+static uint8_t setUART(int32_t *serialPort, const char *port) {
   *serialPort = open(port, O_RDWR | O_NOCTTY);
 
   // Check for errors
@@ -52,7 +52,7 @@ uint8_t static setUART(int32_t *serialPort, const char *port) {
   return EXIT_SUCCESS;
 }
 
-uint8_t static readUART(int32_t serialPort, struct weatherData *data,
+static uint8_t readUART(int32_t serialPort, struct weatherData *data,
                         uint8_t *nodeID) {
   struct dataPacket temp = {0};
   if (tcflush(serialPort, TCIOFLUSH) != 0)

@@ -4,18 +4,104 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weather Data</title>
+  <title>Remote Weather Station</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+  <script src="script.js" defer></script>
 </head>
 
 <body>
-  <h1>Sensor Data</h1>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="10" y1="11" x2="14" y2="11" />
+        </svg>
+        <div>
+          <h1>Remote Weather Station</h1>
+          <p class="brand-sub">Node <span id="nodeId">0</span> &middot; Live sensor feed</p>
+        </div>
+      </div>
+      <div class="header-controls">
+        <div class="unit-toggles">
+          <div class="toggle-group" role="group" aria-label="Temperature unit">
+            <button type="button" class="unit-btn active" id="tempUnitC" data-temp="C">&deg;C</button>
+            <button type="button" class="unit-btn" id="tempUnitF" data-temp="F">&deg;F</button>
+          </div>
+          <div class="toggle-group" role="group" aria-label="Pressure unit">
+            <button type="button" class="unit-btn active" id="pressureUnitHpa" data-pressure="hpa">hPa</button>
+            <button type="button" class="unit-btn" id="pressureUnitInhg" data-pressure="inhg">inHg</button>
+          </div>
+        </div>
+        <div class="status-bar">
+          <span class="live-dot" id="liveDot"></span>
+          <span class="status-label" id="connectionStatus">Connecting&hellip;</span>
+          <span class="status-time" id="lastUpdated">--</span>
+        </div>
+      </div>
+    </header>
 
-  <p>Temperature: <span id="temperature">--</span> &#8451</p>
-  <p>Humidity: <span id="humidity">--</span> %RH</p>
-  <p>Pressure: <span id="pressure">--</span> Pa</p>
-  <p>Time Stamp: <span id="timeStamp">--</span> s</p>
+    <section class="hero">
+      <div class="hero-main">
+        <div class="weather-icon" id="weatherIcon" aria-hidden="true">&#9729;</div>
+        <div class="temp-display">
+          <span class="temp-value" id="temperature">--</span>
+          <span class="temp-unit" id="tempUnit">&deg;C</span>
+        </div>
+        <p class="conditions" id="conditions">Awaiting data&hellip;</p>
+        <p class="station-meta">Last reading at <span id="timeStamp">--</span></p>
+      </div>
 
-  <script src="script.js"></script>
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-icon" aria-hidden="true">&#128167;</span>
+          <span class="metric-label">Humidity</span>
+          <span class="metric-value" id="humidity">--</span>
+          <span class="metric-unit">% relative humidity</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon" aria-hidden="true">&#127777;</span>
+          <span class="metric-label">Pressure</span>
+          <span class="metric-value" id="pressure">--</span>
+          <span class="metric-unit" id="pressureUnit">hPa</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon" aria-hidden="true">&#127744;</span>
+          <span class="metric-label">Dew Point</span>
+          <span class="metric-value" id="dewPoint">--</span>
+          <span class="metric-unit" id="dewPointUnit">&deg;C</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-icon" aria-hidden="true">&#9728;</span>
+          <span class="metric-label">Feels Like</span>
+          <span class="metric-value" id="feelsLike">--</span>
+          <span class="metric-unit" id="feelsLikeUnit">&deg;C</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="history-section">
+      <div class="section-header">
+        <h2>Historical Trends</h2>
+        <div class="history-controls">
+          <button class="btn" id="readAll" type="button">All readings</button>
+          <button class="btn" id="readN" type="button">Last N</button>
+          <input class="n-input" id="nInput" type="number" min="1" max="500" value="20"
+            aria-label="Number of readings" />
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="trendChart" aria-label="Temperature, humidity, and pressure trends"></canvas>
+        <p class="chart-empty" id="chartEmpty">Load history to see trends</p>
+      </div>
+      <p class="records-info" id="recordsInfo"></p>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="alert"></div>
 </body>
 
 </html>
