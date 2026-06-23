@@ -300,8 +300,10 @@ async function updateLatestDisplay(nodeID) {
 }
 
 function buildChart(readings) {
-  const decoded = readings.map(decodeReading).reverse();
-  const anchorTs = decoded.reduce((max, r) => Math.max(max, r.timeStamp), decoded[0]?.timeStamp ?? 0);
+  const decoded = readings
+    .map(decodeReading)
+    .sort((a, b) => a.timeStamp - b.timeStamp);
+  const anchorTs = decoded.length > 0 ? decoded[decoded.length - 1].timeStamp : 0;
   const labels = decoded.map((r) => formatChartTime(r.timeStamp, anchorTs));
   const temps = decoded.map((r) => formatTempC(r.temperature));
   const humidities = decoded.map((r) => r.humidity);
